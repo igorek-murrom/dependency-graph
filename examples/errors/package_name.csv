@@ -1,0 +1,7 @@
+key,value
+package_name,bad/name
+repository,https://index.crates.io/
+test_mode,false
+output_file,graph.svg
+ascii_tree,false
+filter_substring,

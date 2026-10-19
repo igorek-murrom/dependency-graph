@@ -1,0 +1,7 @@
+key,value
+package_name,A
+repository,repository.json
+test_mode,true
+output_file,test-graph.svg
+ascii_tree,true
+filter_substring,B

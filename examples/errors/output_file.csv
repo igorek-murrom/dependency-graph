@@ -1,0 +1,7 @@
+key,value
+package_name,serde
+repository,https://index.crates.io/
+test_mode,false
+output_file,graph.png
+ascii_tree,false
+filter_substring,

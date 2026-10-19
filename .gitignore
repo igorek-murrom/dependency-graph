@@ -1,0 +1,17 @@
+/условие.pdf
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+/output/
+/examples/*.svg
