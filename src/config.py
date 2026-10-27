@@ -4,7 +4,7 @@ import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 FIELDS = (
     "package_name", "repository", "test_mode", "output_file",
@@ -49,20 +49,31 @@ def read_values(path: Path) -> dict[str, str]:
 
 
 def collect_rows(rows) -> dict[str, str]:
-    """Проверить строки, неизвестные ключи, повторы и управляющие символы."""
+    """Собрать настройки, проверяя каждую строку перед добавлением."""
     values = {}
     for number, row in enumerate(rows, start=ROW_SIZE):
-        if len(row) != ROW_SIZE:
-            raise ConfigError(f"Строка {number}: нужны два столбца")
-        key, value = row
-        if key not in FIELDS:
-            raise ConfigError(f"Строка {number}: неизвестный параметр {key!r}")
-        if key in values:
-            raise ConfigError(f"Параметр {key} указан повторно")
-        if not value.isprintable() and value:
-            raise ConfigError(f"{key}: управляющие символы запрещены")
+        key, value = validate_row(row, number, values)
         values[key] = value
     return values
+
+
+def validate_row(row, number: int, values: dict[str, str]) -> tuple[str, str]:
+    """Проверить столбцы CSV, известность и уникальность ключа."""
+    if len(row) != ROW_SIZE:
+        raise ConfigError(f"Строка {number}: нужны два столбца")
+    key, value = row
+    if key not in FIELDS:
+        raise ConfigError(f"Строка {number}: неизвестный параметр {key!r}")
+    if key in values:
+        raise ConfigError(f"Параметр {key} указан повторно")
+    validate_printable(key, value)
+    return key, value
+
+
+def validate_printable(key: str, value: str) -> None:
+    """Разрешить пустое значение, но запретить управляющие символы."""
+    if value and not value.isprintable():
+        raise ConfigError(f"{key}: управляющие символы запрещены")
 
 
 def parse_bool(name: str, value: str) -> bool:
@@ -79,31 +90,54 @@ def resolve_path(value: str, base: Path) -> Path:
 
 
 def validate_repository(value: str, test_mode: bool, base: Path) -> None:
-    """Проверить локальный файл либо синтаксис HTTP(S)-адреса без сети."""
+    """Выбрать проверку локального файла либо HTTP(S)-адреса без сети."""
     if not value or value != value.strip():
         raise ConfigError(
             "repository: нужен непустой URL или путь без пробелов по краям"
         )
     if test_mode:
-        path = resolve_path(value, base)
-        try:
-            with path.open("rb"):
-                pass
-        except OSError as error:
-            message = f"repository: файл недоступен: {error}"
-            raise ConfigError(message) from error
-        return
+        validate_local_repository(resolve_path(value, base))
+    else:
+        validate_remote_repository(value)
+
+
+def validate_local_repository(path: Path) -> None:
+    """Убедиться, что файл тестового репозитория доступен для чтения."""
+    try:
+        with path.open("rb"):
+            pass
+    except OSError as error:
+        message = f"repository: файл недоступен: {error}"
+        raise ConfigError(message) from error
+
+
+def parse_repository_url(value: str) -> tuple[SplitResult, int | None]:
+    """Разобрать адрес и порт; проверить HTTP(S)-схему и наличие хоста."""
     try:
         url = urlsplit(value)
-        valid = url.scheme in ("http", "https") and url.hostname
-        valid = valid and not any(char.isspace() for char in value)
-        valid = valid and not url.username and not url.password
+        host = url.hostname
         port = url.port
-        valid = valid and (port is None or port >= MIN_PORT)
     except ValueError as error:
         raise ConfigError(f"repository: некорректный URL: {error}") from error
-    if not valid:
+    if url.scheme not in ("http", "https") or not host:
         raise ConfigError("repository: ожидается HTTP(S)-URL с именем хоста")
+    return url, port
+
+
+def validate_url_access(url: SplitResult, port: int | None) -> None:
+    """Запретить учётные данные в URL и недопустимый номер порта."""
+    if url.username or url.password:
+        raise ConfigError("repository: учётные данные в URL запрещены")
+    if port is not None and port < MIN_PORT:
+        raise ConfigError("repository: номер порта должен быть положительным")
+
+
+def validate_remote_repository(value: str) -> None:
+    """Проверить URL, не смешивая разбор адреса с проверкой локального файла."""
+    url, port = parse_repository_url(value)
+    if any(char.isspace() for char in value):
+        raise ConfigError("repository: пробельные символы в URL запрещены")
+    validate_url_access(url, port)
 
 
 def validate_output(value: str, base: Path) -> None:
@@ -113,6 +147,11 @@ def validate_output(value: str, base: Path) -> None:
     path = resolve_path(value, base)
     if path.suffix.lower() != ".svg":
         raise ConfigError("output_file: требуется расширение .svg")
+    validate_output_location(path)
+
+
+def validate_output_location(path: Path) -> None:
+    """Проверить папку назначения и тип существующего выходного пути."""
     if not path.parent.is_dir() or path.is_dir():
         raise ConfigError("output_file: неверный путь или папка не существует")
     if path.exists() and not path.is_file():

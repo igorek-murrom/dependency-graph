@@ -45,6 +45,27 @@ class ConfigTests(unittest.TestCase):
             expected = False if value == "false" else value
             self.assertEqual(getattr(config, name), expected)
 
+    def test_valid_repository_urls(self):
+        """Сохранить поддержку HTTP, HTTPS, IPv6 и граничных портов."""
+        urls = (
+            "http://localhost", "https://example.org/nested/index/",
+            "HTTPS://example.org", "https://example.org:1",
+            "https://example.org:65535", "http://[::1]:8080/index/",
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                self.values["repository"] = url
+                self.write_config()
+                self.assertEqual(load_config(self.path).repository, url)
+
+    def test_existing_output_is_not_modified(self):
+        """Проверка имени SVG не должна менять существующее изображение."""
+        output = self.root / "graph.svg"
+        output.write_text("existing graph", encoding="utf-8")
+        self.write_config()
+        self.assertEqual(load_config(self.path).output_file, "graph.svg")
+        self.assertEqual(output.read_text(encoding="utf-8"), "existing graph")
+
     def test_valid_local(self):
         """Проверить локальный путь относительно CSV и оба флага true."""
         self.values.update(
@@ -66,6 +87,9 @@ class ConfigTests(unittest.TestCase):
                 "", "repo.json", "ftp://host", "https://",
                 "https://a b", "https://host:bad", "https://host:0",
                 "https://[broken", "https://user:pass@host",
+                "https://host:65536", "https://host:-1",
+                "https://user@host", "https://:pass@host",
+                "https://host/path with space", " https://host",
             ],
             "test_mode": ["", "yes", "1", "False"],
             "output_file": ["", "graph.png", "missing/graph.svg", ".svg"],

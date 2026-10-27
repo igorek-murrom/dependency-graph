@@ -147,11 +147,18 @@ README.md             Документация
 - `Config` — неизменяемая структура из шести проверенных параметров.
 - `ConfigError` — ошибка чтения или проверки конфигурации.
 - `read_values(path)` — чтение CSV и проверка наличия всех ключей.
-- `collect_rows(rows)` — проверка столбцов, ключей, повторов и символов.
+- `collect_rows(rows)` — сбор проверенных строк в словарь настроек.
+- `validate_row(row, number, values)` — проверка столбцов, ключей и повторов.
+- `validate_printable(key, value)` — запрет управляющих символов.
 - `parse_bool(name, value)` — преобразование `true`/`false` в булево значение.
 - `resolve_path(value, base)` — разрешение пути относительно папки CSV.
-- `validate_repository(value, test_mode, base)` — проверка URL или файла.
-- `validate_output(value, base)` — проверка имени SVG и родительской папки.
+- `validate_repository(value, test_mode, base)` — выбор проверки URL или файла.
+- `validate_local_repository(path)` — проверка чтения локального файла.
+- `parse_repository_url(value)` — разбор URL, проверка схемы, хоста и порта.
+- `validate_url_access(url, port)` — запрет учётных данных и порта 0.
+- `validate_remote_repository(value)` — проверка URL, включая пробелы.
+- `validate_output(value, base)` — проверка имени и расширения SVG.
+- `validate_output_location(path)` — проверка папки и типа выходного пути.
 - `load_config(path)` — полная проверка и создание `Config`.
 
 В `src/main.py` функция `main(argv=None)` обрабатывает аргументы,
