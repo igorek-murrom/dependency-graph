@@ -90,6 +90,7 @@ class ConfigTests(unittest.TestCase):
                 "https://host:65536", "https://host:-1",
                 "https://user@host", "https://:pass@host",
                 "https://host/path with space", " https://host",
+                "https://host/?query=1", "https://host/#fragment",
             ],
             "test_mode": ["", "yes", "1", "False"],
             "output_file": ["", "graph.png", "missing/graph.svg", ".svg"],

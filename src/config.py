@@ -138,6 +138,8 @@ def validate_remote_repository(value: str) -> None:
     if any(char.isspace() for char in value):
         raise ConfigError("repository: пробельные символы в URL запрещены")
     validate_url_access(url, port)
+    if url.query or url.fragment:
+        raise ConfigError("repository: query и fragment в URL запрещены")
 
 
 def validate_output(value: str, base: Path) -> None:
