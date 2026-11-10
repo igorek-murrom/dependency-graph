@@ -15,3 +15,5 @@ dist/
 .DS_Store
 /output/
 /examples/*.svg
+target/
+/examples/cargo-comparison/Cargo.lock

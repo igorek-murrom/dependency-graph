@@ -1,0 +1,8 @@
+key,value
+package_name,A
+repository,cycle.json
+test_mode,true
+output_file,test-graph.svg
+ascii_tree,false
+filter_substring,
+load_order,true

@@ -66,6 +66,26 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(load_config(self.path).output_file, "graph.svg")
         self.assertEqual(output.read_text(encoding="utf-8"), "existing graph")
 
+    def test_load_order_default(self):
+        """Старые CSV без нового ключа сохраняют режим вывода графа."""
+        self.write_config()
+        self.assertFalse(load_config(self.path).load_order)
+
+    def test_load_order_values(self):
+        """Для нового режима принимать только true и false."""
+        for value in ("true", "false"):
+            with self.subTest(value=value):
+                self.values["load_order"] = value
+                self.write_config()
+                self.assertEqual(load_config(self.path).load_order,
+                                 value == "true")
+        for value in ("", "yes", "1", "True"):
+            with self.subTest(value=value):
+                self.values["load_order"] = value
+                self.write_config()
+                with self.assertRaisesRegex(ConfigError, "load_order"):
+                    load_config(self.path)
+
     def test_valid_local(self):
         """Проверить локальный путь относительно CSV и оба флага true."""
         self.values.update(

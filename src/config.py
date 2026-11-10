@@ -10,6 +10,7 @@ FIELDS = (
     "package_name", "repository", "test_mode", "output_file",
     "ascii_tree", "filter_substring",
 )
+OPTIONAL_FIELDS = ("load_order",)
 ROW_SIZE = 2
 MIN_PORT = 1
 PACKAGE_PATTERN = r"[A-Za-z0-9][A-Za-z0-9_-]*"
@@ -21,7 +22,7 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class Config:
-    """Шесть проверенных параметров из CSV; пути хранятся как в файле."""
+    """Проверенные настройки из CSV; пути хранятся как в файле."""
 
     package_name: str
     repository: str
@@ -29,6 +30,7 @@ class Config:
     output_file: str
     ascii_tree: bool
     filter_substring: str
+    load_order: bool = False
 
 
 def read_values(path: Path) -> dict[str, str]:
@@ -62,7 +64,7 @@ def validate_row(row, number: int, values: dict[str, str]) -> tuple[str, str]:
     if len(row) != ROW_SIZE:
         raise ConfigError(f"Строка {number}: нужны два столбца")
     key, value = row
-    if key not in FIELDS:
+    if key not in FIELDS + OPTIONAL_FIELDS:
         raise ConfigError(f"Строка {number}: неизвестный параметр {key!r}")
     if key in values:
         raise ConfigError(f"Параметр {key} указан повторно")
@@ -179,4 +181,5 @@ def load_config(path: Path) -> Config:
         output_file=values["output_file"],
         ascii_tree=ascii_tree,
         filter_substring=values["filter_substring"],
+        load_order=parse_bool("load_order", values.get("load_order", "false")),
     )
