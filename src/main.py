@@ -1,20 +1,31 @@
-"""CLI второго этапа: загрузка и вывод прямых зависимостей Cargo."""
+"""CLI третьего этапа: построение и вывод графа зависимостей."""
 
 import argparse
 import sys
 from pathlib import Path
 
-from cargo import RepositoryError, format_dependency, load_package
-from config import ConfigError, load_config
+from cargo import RepositoryError
+from config import Config, ConfigError, load_config
+from graph import Graph, build_graph, print_graph
+from repository import create_loader
 
 CONFIG_ERROR_EXIT_CODE = 2
 REPOSITORY_ERROR_EXIT_CODE = 3
 
 
+def analyze(config: Config, config_path: Path) -> Graph:
+    """Выбрать источник и построить граф с фильтром из CSV."""
+    load = create_loader(config, config_path.resolve().parent)
+    name = config.package_name
+    if not config.test_mode:
+        name = name.lower()
+    return build_graph(name, load, config.filter_substring)
+
+
 def main(argv=None) -> int:
-    """Прочитать CSV, загрузить зависимости и вывести результат или ошибку."""
+    """Прочитать CSV, построить граф и вывести результат либо ошибку."""
     parser = argparse.ArgumentParser(
-        description="Прямые зависимости пакетов Cargo, этап 2."
+        description="Граф зависимостей Cargo, этап 3: DFS без рекурсии."
     )
     parser.add_argument("config", type=Path, help="путь к CSV-конфигурации")
     args = parser.parse_args(argv)
@@ -24,21 +35,11 @@ def main(argv=None) -> int:
         print(f"Ошибка конфигурации: {error}", file=sys.stderr)
         return CONFIG_ERROR_EXIT_CODE
     try:
-        if config.test_mode:
-            raise RepositoryError(
-                "Тестовый репозиторий будет поддержан на этапе 3"
-            )
-        package = load_package(config.repository, config.package_name)
+        graph = analyze(config, args.config)
     except RepositoryError as error:
         print(f"Ошибка репозитория: {error}", file=sys.stderr)
         return REPOSITORY_ERROR_EXIT_CODE
-    print(f"Пакет: {package.name} {package.version}")
-    if package.dependencies:
-        print("Прямые зависимости:")
-        for dependency in package.dependencies:
-            print(format_dependency(dependency))
-    else:
-        print("Прямых зависимостей нет.")
+    print_graph(graph)
     return 0
 
 
